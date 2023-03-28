@@ -1,3 +1,6 @@
+import datetime
+from datetime import date
+
 from connector import Connector
 from engine_classes import HH, SuperJob
 
@@ -8,12 +11,13 @@ def cleaning_files(file_name):
         pass
 
 
-def formatting_all(name, url, description, city, salary_from, salary_to, salary_currency) -> dict:
+def formatting_all(name, url, description, city, publication_date, salary_from, salary_to, salary_currency) -> dict:
     """Возвращает отформатированный словарь, который приводит все данные к единому виду"""
     data_dict = {'title': name,
                  'url': url,
                  'description': description,
                  'city': city,
+                 'publication_date': get_publication_date(publication_date),
                  'salary_from': salary_from,
                  'salary': get_salary(salary_from, salary_to, salary_currency)}
     return data_dict
@@ -29,11 +33,14 @@ def formatting_hh(job_title: str) -> list:
         url = i['items'][0]['apply_alternate_url']
         description = i['items'][0]['snippet']['responsibility']
         city = i['items'][0]['area']['name']
+        publication_date = i['items'][0]['published_at']
         salary_from = i['items'][0]['salary']['from'] if i['items'][0]['salary'] else None
         salary_to = i['items'][0]['salary']['to'] if i['items'][0]['salary'] else None
         salary_currency = i['items'][0]['salary']['currency'] if i['items'][0]['salary'] else None
 
-        data_dict = formatting_all(name, url, description, city, salary_from, salary_to, salary_currency)
+        data_dict = formatting_all(name, url, description, city, publication_date, salary_from, salary_to,
+                                   salary_currency)
+
         vacancy_hh.append(data_dict)
 
     return vacancy_hh
@@ -49,10 +56,12 @@ def formatting_sj(job_title: str) -> list:
         url = i['objects'][0]['link']
         description = i['objects'][0]['candidat']
         city = i['objects'][0]['town']['title']
+        publication_date = i['objects'][0]['date_pub_to']
         salary_from = i['objects'][0]['payment_from'] if i['objects'][0]['payment_from'] != 0 else None
         salary_to = i['objects'][0]['payment_to'] if i['objects'][0]['payment_to'] != 0 else None
         salary_currency = i['objects'][0]['currency']
-        data_dict = formatting_all(name, url, description, city, salary_from, salary_to, salary_currency)
+        data_dict = formatting_all(name, url, description, city, publication_date, salary_from, salary_to,
+                                   salary_currency)
         vacancy_sj.append(data_dict)
 
     return vacancy_sj
@@ -89,3 +98,15 @@ def get_salary(salary_from, salary_to, salary_currency) -> str:
     else:
         salary = 'Зарплата не указана'
     return salary
+
+
+def get_publication_date(time) -> str:
+    """Возвращает дату публикации"""
+    if type(time) == str:
+        index = time.index('T')
+        publication_date = list(map(int, time[0:index].split('-')))
+        the_date = date(publication_date[0], publication_date[1], publication_date[2])
+        return the_date.strftime("%d.%m.%Y")
+    elif type(time) == int:
+        publication_date = datetime.datetime.fromtimestamp(time)
+        return publication_date.strftime("%d.%m.%Y")
