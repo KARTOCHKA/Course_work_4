@@ -1,91 +1,61 @@
 from connector import Connector
-from engine_classes import HH, SuperJob
+from utils import creating_a_list_with_all_vacancies, writing_vacancies_to_a_file, cleaning_files
+from jobs_classes import sorting_city, sorting_salary, get_top
 
+try:
+    # предварительная очистка создаваемого файла для обновления данных
+    cleaning_files('sorted_vacancies.json')
+    # получение названия должности для дальнейшего поиска
+    job_title = input("Введите название интересующей профессии: ").strip()
+    # получение листа со всеми вакансиями по данному запросу
+    vacancy_list = creating_a_list_with_all_vacancies(job_title)
 
-def cleaning_files(file_name):
-    """Предварительно очищает содержимое файла"""
-    with open(file_name, 'w'):
-        pass
+    try:
+        """Сортировка по названию города"""
+        # получение названия города для дальнейшего поиска
+        user_input_city = input("Введите город для поиска: ").strip().title()
+        # получение листа с вакансиями в конкретном городе
+        sorted_by_city = sorting_city(vacancy_list, user_input_city)
 
+        try:
+            # выводит необходимое количество вакансий
+            user_input_count_vacancy = int(input("Введите количество вакансий: "))
 
-def formatting_all(name, url, description, city, salary_from, salary_to, salary_currency) -> dict:
-    """Возвращает отформатированный словарь, который приводит все данные к единому виду"""
-    data_dict = {'title': name,
-                 'url': url,
-                 'description': description,
-                 'city': city,
-                 'salary_from': salary_from,
-                 'salary': get_salary(salary_from, salary_to, salary_currency)}
-    return data_dict
+            new_content = []
+            for i in vacancy_list:
+                if i['salary_from'] is not None:
+                    new_content.append(i)
 
+            """Сортировка по зарплате"""
 
-def formatting_hh(job_title: str) -> list:
-    """Возваращет приведенный к общему виду список данных, полученных из API для hh.ru"""
-    hh = HH(job_title)
-    vacancy_list = hh.get_request()
-    vacancy_hh = []
-    for i in vacancy_list:
-        name = i['items'][0]['name']
-        url = i['items'][0]['apply_alternate_url']
-        description = i['items'][0]['snippet']['responsibility']
-        city = i['items'][0]['area']['name']
-        salary_from = i['items'][0]['salary']['from'] if i['items'][0]['salary'] else None
-        salary_to = i['items'][0]['salary']['to'] if i['items'][0]['salary'] else None
-        salary_currency = i['items'][0]['salary']['currency'] if i['items'][0]['salary'] else None
+            # сортировка вакансий по зп
+            sorted_by_salary = sorting_salary(new_content, 'salary_from')
+            # запись отсортированных вакансий в файл для вывода более подробной информации, если необходимо
+            writing_vacancies_to_a_file('sorted_vacancies.json', sorted_by_salary)
 
-        data_dict = formatting_all(name, url, description, city, salary_from, salary_to, salary_currency)
-        vacancy_hh.append(data_dict)
+            """Сортировка по дате публикации"""
 
-    return vacancy_hh
+            try:
+                vacancies_by_date = input("Хотите ли вывести вакансии за определенную дату? (да/нет)").strip().lower()
+                if vacancies_by_date == 'да' or vacancies_by_date == 'yes':
+                    user_input_data = input("За какую дату вывести вакансии: ")
+                    c = Connector('sorted_vacancies.json')
+                    sorted_by_date = c.select({'publication_date': user_input_data})
+                    get_top(sorted_by_salary, user_input_count_vacancy)
+                else:
+                    sorted_by_date = input("Сортировать по дате публикации? (да/нет").strip().lower()
+                    if sorted_by_date == 'да' or sorted_by_date == 'yes':
+                        list_sorted_by_date = sorting_salary(sorted_by_salary, "publication_date")
+                        get_top(list_sorted_by_date, user_input_count_vacancy)
+                    else:
+                        get_top(sorted_by_salary, user_input_count_vacancy)
+            except AttributeError:
+                print("Вакансий в эту дату нет, или дата указано не корректно. Начните сначала")
+        except ValueError:
+            print("Количество вакансий указано не корректно. Начните сначала")
 
+    except AttributeError:
+        print(f"Вакансий в этом городе нет. Начните сначала")
 
-def formatting_sj(job_title: str) -> list:
-    """Возваращет приведенный к общему виду список данных, полученных из API для hh.ru"""
-    sj = SuperJob(job_title)
-    vacancy_list = sj.get_request()
-    vacancy_sj = []
-    for i in vacancy_list:
-        name = i['objects'][0]['profession']
-        url = i['objects'][0]['link']
-        description = i['objects'][0]['candidat']
-        city = i['objects'][0]['town']['title']
-        salary_from = i['objects'][0]['payment_from'] if i['objects'][0]['payment_from'] != 0 else None
-        salary_to = i['objects'][0]['payment_to'] if i['objects'][0]['payment_to'] != 0 else None
-        salary_currency = i['objects'][0]['currency']
-        data_dict = formatting_all(name, url, description, city, salary_from, salary_to, salary_currency)
-        vacancy_sj.append(data_dict)
-
-    return vacancy_sj
-
-
-def creating_a_list_with_all_vacancies(job_title: str) -> list:
-    """Возвращает лист со всеми вакансиями по названию вакансии с superjob и hh.ru"""
-    hh = formatting_hh(job_title)
-    sj = formatting_sj(job_title)
-    vacancy_list = []
-    for hh_vacancy in hh:
-        vacancy_list.append(hh_vacancy)
-
-    for sj_vacancy in sj:
-        vacancy_list.append(sj_vacancy)
-    return vacancy_list
-
-
-def writing_vacancies_to_a_file(file_name, data):
-    """Запись данных в файл"""
-    connector = Connector(file_name)
-    connector.insert(data)
-
-
-def get_salary(salary_from, salary_to, salary_currency) -> str:
-    """Приводит зарплату к более читабельному виду"""
-    if salary_from is not None and salary_to is not None:
-        salary = f'от {int(salary_from * 77.02) if salary_currency == "USD" else salary_from}' \
-                 f' до {int(salary_to * 77.02) if salary_currency == "USD" else salary_to} руб/мес '
-    elif salary_from is None and salary_to is not None or salary_from == 0 and salary_to != 0:
-        salary = f'Зарплата до {salary_to} руб/мес'
-    elif salary_from is not None and salary_to is None or salary_from != 0 and salary_to == 0:
-        salary = f'Зарплата от {salary_from} руб/мес'
-    else:
-        salary = 'Зарплата не указана'
-    return salary
+except AttributeError:
+    print("Такой вакансии нет, попробуйте указать вакансию корректно")
