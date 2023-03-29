@@ -30,7 +30,7 @@ class SuperJob(Engine):
         """Получение вакансий с superjob по API"""
         self.job_title = job_title
         load_dotenv()
-        api_key: str = os.getenv('API_KEY_SUPERJOB')  # ключ находится в файле .env
+        api_key: str = os.getenv('SUPERJOB_API')  # ключ находится в файле .env
         my_auth_data = {'X-Api-App-Id': api_key}
         self.vacancy_list = []
         for item in range(page):

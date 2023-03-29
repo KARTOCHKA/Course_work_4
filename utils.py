@@ -29,19 +29,20 @@ def formatting_hh(job_title: str) -> list:
     vacancy_list = hh.get_request()
     vacancy_hh = []
     for i in vacancy_list:
-        name = i['items'][0]['name']
-        url = i['items'][0]['apply_alternate_url']
-        description = i['items'][0]['snippet']['responsibility']
-        city = i['items'][0]['area']['name']
-        publication_date = i['items'][0]['published_at']
-        salary_from = i['items'][0]['salary']['from'] if i['items'][0]['salary'] else None
-        salary_to = i['items'][0]['salary']['to'] if i['items'][0]['salary'] else None
-        salary_currency = i['items'][0]['salary']['currency'] if i['items'][0]['salary'] else None
+        if len(i['items']) != 0:
+            name = i['items'][0]['name']
+            url = i['items'][0]['apply_alternate_url']
+            description = i['items'][0]['snippet']['responsibility']
+            city = i['items'][0]['area']['name']
+            publication_date = i['items'][0]['published_at']
+            salary_from = i['items'][0]['salary']['from'] if i['items'][0]['salary'] else None
+            salary_to = i['items'][0]['salary']['to'] if i['items'][0]['salary'] else None
+            salary_currency = i['items'][0]['salary']['currency'] if i['items'][0]['salary'] else None
 
-        data_dict = formatting_all(name, url, description, city, publication_date, salary_from, salary_to,
-                                   salary_currency)
+            data_dict = formatting_all(name, url, description, city, publication_date, salary_from, salary_to,
+                                       salary_currency)
 
-        vacancy_hh.append(data_dict)
+            vacancy_hh.append(data_dict)
 
     return vacancy_hh
 
